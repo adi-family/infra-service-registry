@@ -1,8 +1,8 @@
 services:
   registry:
     build:
-      context: ../..
-      dockerfile: crates/adi-plugin-registry-http/Dockerfile
+      context: .
+      dockerfile: registry/Dockerfile
     environment:
       - PORT=8080
       - DATA_PATH=/data

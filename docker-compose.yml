@@ -1,0 +1,45 @@
+services:
+  registry:
+    build:
+      context: ../..
+      dockerfile: crates/adi-plugin-registry-http/Dockerfile
+    environment:
+      - PORT=8080
+      - DATA_PATH=/data
+      - RUST_LOG=${RUST_LOG:-info}
+    networks:
+      - coolify
+    volumes:
+      - registry-data:/data
+    labels:
+      - "traefik.enable=true"
+      # HTTPS router
+      - "traefik.http.routers.registry.rule=Host(`adi.the-ihor.com`) && PathPrefix(`/api/registry`)"
+      - "traefik.http.routers.registry.entrypoints=https"
+      - "traefik.http.routers.registry.tls=true"
+      - "traefik.http.routers.registry.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.registry.priority=10"
+      # Strip /api/registry prefix before forwarding
+      - "traefik.http.routers.registry.middlewares=registry-stripprefix"
+      - "traefik.http.middlewares.registry-stripprefix.stripprefix.prefixes=/api/registry"
+      # HTTP to HTTPS redirect
+      - "traefik.http.routers.registry-http.rule=Host(`adi.the-ihor.com`) && PathPrefix(`/api/registry`)"
+      - "traefik.http.routers.registry-http.entrypoints=http"
+      - "traefik.http.routers.registry-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.registry-http.priority=10"
+      # Service
+      - "traefik.http.services.registry.loadbalancer.server.port=8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  registry-data:
+
+networks:
+  coolify:
+    external: true
